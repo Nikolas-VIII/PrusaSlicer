@@ -227,7 +227,7 @@ void OG_CustomCtrl::OnPaint(wxPaintEvent&)
     }
 }
 
-void OG_CustomCtrl::OnMotion(wxMouseEvent& event)
+void OG_CustomCtrl::OnMotion(wxMouseEvent& event)//TODO fix tooltips here
 {
     const wxPoint pos = event.GetLogicalPosition(wxClientDC(this));
     wxString tooltip;

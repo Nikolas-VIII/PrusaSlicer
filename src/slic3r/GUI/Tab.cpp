@@ -393,7 +393,7 @@ void Tab::load_initial_data()
     m_tt_non_system  = has_parent ? &m_tt_value_unlock  : &m_ttg_white_bullet_ns;
 }
 
-Slic3r::GUI::PageShp Tab::add_options_page(const wxString& title, const std::string& icon, bool is_extruder_pages /*= false*/)
+Slic3r::GUI::PageShp Tab::add_options_page(const wxString& title, const std::string& icon, bool is_extruder_pages /*= false*/)//TODO look into this
 {
     // Index of icon in an icon list $self->{icons}.
     auto icon_idx = 0;
@@ -1832,7 +1832,20 @@ void TabFilament::build()
         option.opt.width = Field::def_width();
         optgroup->append_single_option_line(option);
         optgroup->append_single_option_line("filament_soluble");
+
+        //line = { "", "" };//TODO added line - need to integrate
+        //line.full_width = 1;
+        //line.widget = [this](wxWindow* parent) {
+        //    return description_line_widget(parent, &m_);
+        //}
+
+        optgroup = page->new_optgroup(L("Active foaming filament"));
         optgroup->append_single_option_line("variable_filament_density");
+        line = {L("Temperaturee range"), "" };
+        //line.label_path = category_path + "";
+        line.append_option(optgroup->get_option("foaming_min_temp"));
+        line.append_option(optgroup->get_option("foaming_max_temp"));
+        optgroup->append_line(line);
 
         optgroup = page->new_optgroup(L("Print speed override"));
         optgroup->append_single_option_line("filament_max_volumetric_speed", "max-volumetric-speed_127176");

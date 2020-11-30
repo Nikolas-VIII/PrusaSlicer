@@ -1968,6 +1968,7 @@ Plater::priv::priv(Plater *q, MainFrame *main_frame)
         view3D_canvas->Bind(EVT_GLTOOLBAR_SPLIT_OBJECTS, &priv::on_action_split_objects, this);
         view3D_canvas->Bind(EVT_GLTOOLBAR_SPLIT_VOLUMES, &priv::on_action_split_volumes, this);
         view3D_canvas->Bind(EVT_GLTOOLBAR_LAYERSEDITING, &priv::on_action_layersediting, this);
+        view3D_canvas->Bind(EVT_GLTOOLBAR_LAYERSTEMPEDITING, &priv::on_action_layersediting, this);//TODO work on this
 #if ENABLE_GCODE_VIEWER
     }
 #endif // ENABLE_GCODE_VIEWER

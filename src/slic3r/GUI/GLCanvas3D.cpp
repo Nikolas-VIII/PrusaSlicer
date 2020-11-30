@@ -4977,6 +4977,24 @@ bool GLCanvas3D::_init_main_toolbar()
     if (!m_main_toolbar.add_item(item))
         return false;
 
+    item.name = "layerstempediting";//TODO added this
+    item.icon_filename = "layers_white.svg";//TODO change to new pic
+    item.tooltip = _utf8(L("Variable layer temperature"));// or maybe density
+    item.sprite_id = 12;//TODO change
+    item.left.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_LAYERSTEMPEDITING)); };
+    item.visibility_callback = [this]() -> bool {
+        bool res = m_process->current_printer_technology() == ptFFF;
+        // turns off if changing printer technology
+        if (!res && m_main_toolbar.is_item_visible("layertempsediting") && m_main_toolbar.is_item_pressed("layerstempediting"))
+            force_main_toolbar_left_action(get_main_toolbar_item_id("layerstempediting"));
+
+        return res;
+    };
+    item.enabling_callback      = []() -> bool { return wxGetApp().plater()->can_layers_editing(); };//TODO need to look into this
+    item.left.render_callback   = GLToolbarItem::Default_Render_Callback;
+    if (!m_main_toolbar.add_item(item))
+        return false;
+
     return true;
 }
 

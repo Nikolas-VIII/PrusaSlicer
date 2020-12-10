@@ -680,7 +680,7 @@ public:
     ConfigOptionFloats              filament_density;
     ConfigOptionStrings             filament_type;
     ConfigOptionBools               filament_soluble;
-    ConfigOptionBools               variable_filament_density;
+    ConfigOptionBools               variable_filament_density;//TODO added
     ConfigOptionFloats              filament_cost;
     ConfigOptionFloats              filament_max_volumetric_speed;
     ConfigOptionFloats              filament_loading_speed;

@@ -205,6 +205,11 @@ bool GLCanvas3D::LayersEditing::is_allowed() const
     return wxGetApp().get_shader("variable_layer_height") != nullptr && m_z_texture_id > 0;
 }
 
+bool GLCanvas3D::LayersEditing::is_temp_allowed() const//TODO added
+{
+    return wxGetApp().get_shader("variable_layer_density") != nullptr && m_z_texture_id > 0;//TODO check if this does need shader
+}
+
 bool GLCanvas3D::LayersEditing::is_enabled() const
 {
     return m_enabled;
@@ -213,6 +218,16 @@ bool GLCanvas3D::LayersEditing::is_enabled() const
 void GLCanvas3D::LayersEditing::set_enabled(bool enabled)
 {
     m_enabled = is_allowed() && enabled;
+}
+
+bool GLCanvas3D::LayersEditing::is_temp_mode() const//TODO added
+{
+    return m_temperature_mode;
+}
+
+void  GLCanvas3D::LayersEditing::set_temp_mode(bool enabled)
+{
+    m_temperature_mode = is_temp_allowed() && enabled;
 }
 
 float GLCanvas3D::LayersEditing::s_overelay_window_width;
@@ -228,58 +243,89 @@ void GLCanvas3D::LayersEditing::render_overlay(const GLCanvas3D& canvas) const
     imgui.set_next_window_pos(static_cast<float>(cnv_size.get_width()) - imgui.get_style_scaling() * THICKNESS_BAR_WIDTH, 
         static_cast<float>(cnv_size.get_height()), ImGuiCond_Always, 1.0f, 1.0f);
 
-    imgui.begin(_L("Variable layer height"), ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+    float text_align;
+    float widget_align;
 
-    imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Left mouse button:"));
-    ImGui::SameLine();
-    imgui.text(_L("Add detail"));
+    if (!m_temperature_mode) {
 
-    imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Right mouse button:"));
-    ImGui::SameLine();
-    imgui.text(_L("Remove detail"));
+        imgui.begin(_L("Variable layer height"), ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
-    imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Shift + Left mouse button:"));
-    ImGui::SameLine();
-    imgui.text(_L("Reset to base"));
+        imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Left mouse button:"));
+        ImGui::SameLine();
+        imgui.text(_L("Add detail"));
 
-    imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Shift + Right mouse button:"));
-    ImGui::SameLine();
-    imgui.text(_L("Smoothing"));
+        imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Right mouse button:"));
+        ImGui::SameLine();
+        imgui.text(_L("Remove detail"));
 
-    imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Mouse wheel:"));
-    ImGui::SameLine();
-    imgui.text(_L("Increase/decrease edit area"));
+        imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Shift + Left mouse button:"));
+        ImGui::SameLine();
+        imgui.text(_L("Reset to base"));
+
+        imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Shift + Right mouse button:"));
+        ImGui::SameLine();
+        imgui.text(_L("Smoothing"));
+
+        imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Mouse wheel:"));
+        ImGui::SameLine();
+        imgui.text(_L("Increase/decrease edit area"));
     
-    ImGui::Separator();
-    if (imgui.button(_L("Adaptive")))
-        wxPostEvent((wxEvtHandler*)canvas.get_wxglcanvas(), Event<float>(EVT_GLCANVAS_ADAPTIVE_LAYER_HEIGHT_PROFILE, m_adaptive_quality));
+        ImGui::Separator();
+        if (imgui.button(_L("Adaptive")))
+            wxPostEvent((wxEvtHandler*)canvas.get_wxglcanvas(), Event<float>(EVT_GLCANVAS_ADAPTIVE_LAYER_HEIGHT_PROFILE, m_adaptive_quality));
 
-    ImGui::SameLine();
-    float text_align = ImGui::GetCursorPosX();
-    ImGui::AlignTextToFramePadding();
-    imgui.text(_L("Quality / Speed"));
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::TextUnformatted(_L("Higher print quality versus higher print speed.").ToUTF8());
-        ImGui::EndTooltip();
+        ImGui::SameLine();
+        text_align = ImGui::GetCursorPosX();
+        ImGui::AlignTextToFramePadding();
+        imgui.text(_L("Quality / Speed"));
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::TextUnformatted(_L("Higher print quality versus higher print speed.").ToUTF8());
+            ImGui::EndTooltip();
+        }
+
+        ImGui::SameLine();
+        widget_align = ImGui::GetCursorPosX();
+        ImGui::PushItemWidth(imgui.get_style_scaling() * 120.0f);
+        m_adaptive_quality = clamp(0.0f, 1.f, m_adaptive_quality);
+        ImGui::SliderFloat("", &m_adaptive_quality, 0.0f, 1.f, "%.2f");
+
+    } else {//TODO added
+
+        imgui.begin(_L("Variable layer density"), ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+
+        imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Left mouse button:"));
+        ImGui::SameLine();
+        imgui.text(_L("Reduce Density"));
+
+        imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Right mouse button:"));
+        ImGui::SameLine();
+        imgui.text(_L("Increase Density"));
+
+        imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Shift + Left mouse button:"));
+        ImGui::SameLine();
+        imgui.text(_L("Reset to base"));
+
+        imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Shift + Right mouse button:"));
+        ImGui::SameLine();
+        imgui.text(_L("Smoothing"));
+
+        imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Mouse wheel:"));
+        ImGui::SameLine();
+        imgui.text(_L("Increase/decrease edit area"));
+    
     }
-
-    ImGui::SameLine();
-    float widget_align = ImGui::GetCursorPosX();
-    ImGui::PushItemWidth(imgui.get_style_scaling() * 120.0f);
-    m_adaptive_quality = clamp(0.0f, 1.f, m_adaptive_quality);
-    ImGui::SliderFloat("", &m_adaptive_quality, 0.0f, 1.f, "%.2f");
 
     ImGui::Separator();
     if (imgui.button(_L("Smooth")))
         wxPostEvent((wxEvtHandler*)canvas.get_wxglcanvas(), HeightProfileSmoothEvent(EVT_GLCANVAS_SMOOTH_LAYER_HEIGHT_PROFILE, m_smooth_params));
 
     ImGui::SameLine();
-    ImGui::SetCursorPosX(text_align);
+    ImGui::SetCursorPosX(text_align);//TODO might need to move to if (if it behaves weirdly)
     ImGui::AlignTextToFramePadding();
     imgui.text(_L("Radius"));
     ImGui::SameLine();
-    ImGui::SetCursorPosX(widget_align);
+    ImGui::SetCursorPosX(widget_align);//TODO same as above
     ImGui::PushItemWidth(imgui.get_style_scaling() * 120.0f);
     int radius = (int)m_smooth_params.radius;
     if (ImGui::SliderInt("##1", &radius, 1, 10))
@@ -447,7 +493,7 @@ void GLCanvas3D::LayersEditing::render_volumes(const GLCanvas3D& canvas, const G
 {
     assert(this->is_allowed());
     assert(this->last_object_id != -1);
-    GLShaderProgram* shader = wxGetApp().get_shader("variable_layer_height");
+    GLShaderProgram* shader = wxGetApp().get_shader("variable_layer_height");//TODO look into this
     if (shader == nullptr)
         return;
 
@@ -1578,8 +1624,10 @@ bool GLCanvas3D::init()
     if (m_multisample_allowed)
         glsafe(::glEnable(GL_MULTISAMPLE));
 
-    if (m_main_toolbar.is_enabled())
+    if (m_main_toolbar.is_enabled()) {
         m_layers_editing.init();
+        m_temp_layers_editing.init();//TODO added
+    }
 
     // on linux the gl context is not valid until the canvas is not shown on screen
     // we defer the geometry finalization of volumes until the first call to render()
@@ -1774,6 +1822,16 @@ bool GLCanvas3D::is_layers_editing_allowed() const
     return m_layers_editing.is_allowed();
 }
 
+bool GLCanvas3D::is_layers_temp_editing_enabled() const
+{
+    return m_temp_layers_editing.is_enabled();
+}
+
+bool GLCanvas3D::is_layers_temp_editing_allowed() const
+{
+    return m_temp_layers_editing.is_allowed();
+}
+
 void GLCanvas3D::reset_layer_height_profile()
 {
     wxGetApp().plater()->take_snapshot(_(L("Variable layer height - Reset")));
@@ -1816,6 +1874,22 @@ void GLCanvas3D::enable_layers_editing(bool enable)
 
     set_as_dirty();
 }
+
+void GLCanvas3D::enable_layers_temp_editing(bool enable)//TODO added
+{
+    m_temp_layers_editing.set_enabled(enable);
+    m_temp_layers_editing.set_temp_mode(enable);//TODO not sure if neccessary
+    const Selection::IndicesList &idxs = m_selection.get_volume_idxs();
+    for (unsigned int idx : idxs)
+    {
+        GLVolume *v = m_volumes.volumes[idx];
+        if (v->is_modifier)
+            v->force_transparent = enable;
+    }
+
+    set_as_dirty();
+}
+
 
 void GLCanvas3D::enable_legend_texture(bool enable)
 {
@@ -4979,7 +5053,7 @@ bool GLCanvas3D::_init_main_toolbar()
 
     item.name = "layerstempediting";//TODO added this
     item.icon_filename = "layers_white.svg";//TODO change to new pic
-    item.tooltip = _utf8(L("Variable layer temperature"));// or maybe density
+    item.tooltip = _utf8(L("Variable layer density"));
     item.sprite_id = 12;//TODO change
     item.left.action_callback = [this]() { if (m_canvas != nullptr) wxPostEvent(m_canvas, SimpleEvent(EVT_GLTOOLBAR_LAYERSTEMPEDITING)); };
     item.visibility_callback = [this]() -> bool {
@@ -4990,7 +5064,7 @@ bool GLCanvas3D::_init_main_toolbar()
 
         return res;
     };
-    item.enabling_callback      = []() -> bool { return wxGetApp().plater()->can_layers_editing(); };//TODO need to look into this
+    item.enabling_callback      = []() -> bool { return wxGetApp().plater()->can_layers_temp_editing(); };//TODO added
     item.left.render_callback   = GLToolbarItem::Default_Render_Callback;
     if (!m_main_toolbar.add_item(item))
         return false;

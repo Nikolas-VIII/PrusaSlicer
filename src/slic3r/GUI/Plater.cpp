@@ -1758,6 +1758,7 @@ struct Plater::priv
     bool can_split_to_volumes() const;
     bool can_arrange() const;
     bool can_layers_editing() const;
+    bool can_layers_temp_editing() const;//TODO added not sure if I should have yet
     bool can_fix_through_netfabb() const;
     bool can_set_instance_to_object() const;
     bool can_mirror() const;
@@ -1792,6 +1793,7 @@ private:
 
     bool can_split() const;
     bool layers_height_allowed() const;
+    bool layers_density_allowed() const;
 
     void update_fff_scene();
     void update_sla_scene();
@@ -4175,6 +4177,15 @@ bool Plater::priv::layers_height_allowed() const
     return (0 <= obj_idx) && (obj_idx < (int)model.objects.size()) && config->opt_bool("variable_layer_height") && view3D->is_layers_editing_allowed();
 }
 
+bool Plater::priv::layers_density_allowed() const//TODO added
+{
+    if (printer_technology != ptFFF)
+        return false;
+
+    int obj_idx = get_selected_object_idx();
+    return (0 <= obj_idx) && (obj_idx < (int)model.objects.size()) && config->opt_bool("variable_filament_density") && view3D->is_layers_temp_editing_allowed();
+}
+
 bool Plater::priv::can_mirror() const
 {
     return get_selection().is_from_single_instance();
@@ -4297,6 +4308,11 @@ bool Plater::priv::can_layers_editing() const
     return layers_height_allowed();
 }
 
+bool Plater::priv::can_layers_temp_editing() const
+{
+    return layers_density_allowed();
+}
+
 void Plater::priv::update_object_menu()
 {
     sidebar->obj_list()->append_menu_items_add_volume(&object_menu);
@@ -4377,6 +4393,8 @@ void Plater::priv::take_snapshot(const std::string& snapshot_name)
     snapshot_data.printer_technology = this->printer_technology;
     if (this->view3D->is_layers_editing_enabled())
         snapshot_data.flags |= UndoRedo::SnapshotData::VARIABLE_LAYER_EDITING_ACTIVE;
+    if (this->view3D->is_layers_temp_editing_enabled())
+        snapshot_data.flags |= UndoRedo::SnapshotData::VARIABLE_LAYER_TEMP_EDITING_ACTIVE;//TODO added
     if (this->sidebar->obj_list()->is_selected(itSettings)) {
         snapshot_data.flags |= UndoRedo::SnapshotData::SELECTED_SETTINGS_ON_SIDEBAR;
         snapshot_data.layer_range_idx = this->sidebar->obj_list()->get_selected_layers_range_idx();
@@ -4463,6 +4481,8 @@ void Plater::priv::undo_redo_to(std::vector<UndoRedo::Snapshot>::const_iterator 
     top_snapshot_data.printer_technology = this->printer_technology;
     if (this->view3D->is_layers_editing_enabled())
         top_snapshot_data.flags |= UndoRedo::SnapshotData::VARIABLE_LAYER_EDITING_ACTIVE;
+    if (this->view3D->is_layers_temp_editing_enabled())//TODO added
+        top_snapshot_data.flags |= UndoRedo::SnapshotData::VARIABLE_LAYER_TEMP_EDITING_ACTIVE;
     if (this->sidebar->obj_list()->is_selected(itSettings)) {
         top_snapshot_data.flags |= UndoRedo::SnapshotData::SELECTED_SETTINGS_ON_SIDEBAR;
         top_snapshot_data.layer_range_idx = this->sidebar->obj_list()->get_selected_layers_range_idx();
@@ -4473,10 +4493,11 @@ void Plater::priv::undo_redo_to(std::vector<UndoRedo::Snapshot>::const_iterator 
     }
     else if (this->sidebar->obj_list()->is_selected(itLayerRoot))
         top_snapshot_data.flags |= UndoRedo::SnapshotData::SELECTED_LAYERROOT_ON_SIDEBAR;
-    bool   		 new_variable_layer_editing_active = (new_flags & UndoRedo::SnapshotData::VARIABLE_LAYER_EDITING_ACTIVE) != 0;
-    bool         new_selected_settings_on_sidebar  = (new_flags & UndoRedo::SnapshotData::SELECTED_SETTINGS_ON_SIDEBAR) != 0;
-    bool         new_selected_layer_on_sidebar     = (new_flags & UndoRedo::SnapshotData::SELECTED_LAYER_ON_SIDEBAR) != 0;
-    bool         new_selected_layerroot_on_sidebar = (new_flags & UndoRedo::SnapshotData::SELECTED_LAYERROOT_ON_SIDEBAR) != 0;
+    bool   		 new_variable_layer_editing_active      = (new_flags & UndoRedo::SnapshotData::VARIABLE_LAYER_EDITING_ACTIVE) != 0;
+    bool         new_variable_layer_temp_editing_active = (new_flags & UndoRedo::SnapshotData::VARIABLE_LAYER_TEMP_EDITING_ACTIVE) !=0;//TODO added
+    bool         new_selected_settings_on_sidebar       = (new_flags & UndoRedo::SnapshotData::SELECTED_SETTINGS_ON_SIDEBAR) != 0;
+    bool         new_selected_layer_on_sidebar          = (new_flags & UndoRedo::SnapshotData::SELECTED_LAYER_ON_SIDEBAR) != 0;
+    bool         new_selected_layerroot_on_sidebar      = (new_flags & UndoRedo::SnapshotData::SELECTED_LAYERROOT_ON_SIDEBAR) != 0;
 
     if (this->view3D->get_canvas3d()->get_gizmos_manager().wants_reslice_supports_on_undo())
         top_snapshot_data.flags |= UndoRedo::SnapshotData::RECALCULATE_SLA_SUPPORTS;
@@ -4484,6 +4505,8 @@ void Plater::priv::undo_redo_to(std::vector<UndoRedo::Snapshot>::const_iterator 
     // Disable layer editing before the Undo / Redo jump.
     if (!new_variable_layer_editing_active && view3D->is_layers_editing_enabled())
         view3D->get_canvas3d()->force_main_toolbar_left_action(view3D->get_canvas3d()->get_main_toolbar_item_id("layersediting"));
+    if (!new_variable_layer_temp_editing_active && view3D->is_layers_temp_editing_enabled())
+        view3D->get_canvas3d()->force_main_toolbar_left_action(view3D->get_canvas3d()->get_main_toolbar_item_id("layerstempediting"));
 
     // Make a copy of the snapshot, undo/redo could invalidate the iterator
     const UndoRedo::Snapshot snapshot_copy = *it_snapshot;
@@ -4531,6 +4554,8 @@ void Plater::priv::undo_redo_to(std::vector<UndoRedo::Snapshot>::const_iterator 
         // Enable layer editing after the Undo / Redo jump.
         if (! view3D->is_layers_editing_enabled() && this->layers_height_allowed() && new_variable_layer_editing_active)
             view3D->get_canvas3d()->force_main_toolbar_left_action(view3D->get_canvas3d()->get_main_toolbar_item_id("layersediting"));
+        if (! view3D->is_layers_temp_editing_enabled() && this->layers_density_allowed() && new_variable_layer_temp_editing_active)
+            view3D->get_canvas3d()->force_main_toolbar_left_action(view3D->get_canvas3d()->get_main_toolbar_item_id("layerstempediting"));
     }
 }
 
@@ -6037,6 +6062,7 @@ bool Plater::can_split_to_objects() const { return p->can_split_to_objects(); }
 bool Plater::can_split_to_volumes() const { return p->can_split_to_volumes(); }
 bool Plater::can_arrange() const { return p->can_arrange(); }
 bool Plater::can_layers_editing() const { return p->can_layers_editing(); }
+bool Plater::can_layers_temp_editing() const { return p ->can_layers_temp_editing(); }//TODO added
 bool Plater::can_paste_from_clipboard() const
 {
     const Selection& selection = p->view3D->get_canvas3d()->get_selection();

@@ -171,8 +171,8 @@ private:
 
         static const float THICKNESS_BAR_WIDTH;
     private:
-
         bool                        m_enabled;
+        bool                        m_temperature_mode;//TODO added
         unsigned int                m_z_texture_id;
         // Not owned by LayersEditing.
         const DynamicPrintConfig   *m_config;
@@ -227,9 +227,12 @@ private:
         void select_object(const Model &model, int object_id);
 
         bool is_allowed() const;
+        bool is_temp_allowed() const;//TODO added
 
         bool is_enabled() const;
         void set_enabled(bool enabled);
+        bool is_temp_mode() const; // TODO added
+        void set_temp_mode(bool enabled);
 
         void render_overlay(const GLCanvas3D& canvas) const;
         void render_volumes(const GLCanvas3D& canvas, const GLVolumeCollection& volumes) const;
@@ -463,6 +466,7 @@ private:
     WarningTexture m_warning_texture;
     wxTimer m_timer;
     LayersEditing m_layers_editing;
+    LayersEditing m_temp_layers_editing;
     Mouse m_mouse;
     mutable GLGizmosManager m_gizmos;
     mutable GLToolbar m_main_toolbar;
@@ -598,6 +602,8 @@ public:
 
     bool is_layers_editing_enabled() const;
     bool is_layers_editing_allowed() const;
+    bool is_layers_temp_editing_enabled() const;//TODO added
+    bool is_layers_temp_editing_allowed() const;
     bool is_search_pressed() const;
 
     void reset_layer_height_profile();
@@ -607,6 +613,7 @@ public:
     bool is_reload_delayed() const;
 
     void enable_layers_editing(bool enable);
+    void enable_layers_temp_editing(bool enable);
     void enable_legend_texture(bool enable);
     void enable_picking(bool enable);
     void enable_moving(bool enable);

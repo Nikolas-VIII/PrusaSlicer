@@ -148,6 +148,21 @@ void View3D::enable_layers_editing(bool enable)
         m_canvas->enable_layers_editing(enable);
 }
 
+bool View3D::is_layers_temp_editing_enabled() const//TODO added
+{
+    return (m_canvas != nullptr) ? m_canvas->is_layers_temp_editing_enabled() : false;
+}
+
+bool View3D::is_layers_temp_editing_allowed() const
+{
+    return (m_canvas != nullptr) ? m_canvas->is_layers_temp_editing_allowed() : false;
+}
+
+void View3D::enable_layers_temp_editing(bool enable)
+{
+    if (m_canvas != nullptr) m_canvas->enable_layers_temp_editing(enable);
+}
+
 bool View3D::is_dragging() const
 {
     return (m_canvas != nullptr) ? m_canvas->is_dragging() : false;

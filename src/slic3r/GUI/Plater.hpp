@@ -279,6 +279,7 @@ public:
     bool can_split_to_volumes() const;
     bool can_arrange() const;
     bool can_layers_editing() const;
+    bool can_layers_temp_editing() const;//TODO added
     bool can_paste_from_clipboard() const;
     bool can_copy_to_clipboard() const;
     bool can_undo() const;

@@ -97,6 +97,11 @@ struct SlicingParameters
     // In case of a soluble interface, object_print_z_min == raft_contact_top_z, otherwise there is a gap between the raft and the 1st object layer.
     coordf_t 	object_print_z_min;
     coordf_t 	object_print_z_max;
+
+    //TODO added
+    //Variables for varible layer temp
+    coordf_t    min_layer_temp;
+    coordf_t    max_layer_temp;
 };
 static_assert(IsTriviallyCopyable<SlicingParameters>::value, "SlicingParameters class is not POD (and it should be - see constructor).");
 
@@ -125,7 +130,9 @@ inline bool equal_layering(const SlicingParameters &sp1, const SlicingParameters
             sp1.raft_base_top_z                     == sp2.raft_base_top_z                      &&
             sp1.raft_interface_top_z                == sp2.raft_interface_top_z                 &&
             sp1.raft_contact_top_z                  == sp2.raft_contact_top_z                   &&
-            sp1.object_print_z_min                  == sp2.object_print_z_min;
+            sp1.object_print_z_min                  == sp2.object_print_z_min                   &&//TODO added
+            sp1.min_layer_temp                      == sp2.min_layer_temp                       &&
+            sp1.max_layer_temp                      == sp2.max_layer_temp;
 }
 
 typedef std::pair<coordf_t,coordf_t> t_layer_height_range;
@@ -166,6 +173,19 @@ extern void adjust_layer_height_profile(
     coordf_t                     layer_thickness_delta, 
     coordf_t                     band_width,
     LayerHeightEditActionType    action);
+
+extern void adjust_layer_density_profile(//TODO added
+    const SlicingParameters     &slicing_params,
+    std::vector<coordf_t>       &layer_height_profile,
+    std::vector<coordf_t>       &layer_density_profile,
+    coordf_t                     z,
+    coordf_t                     layer_thickness_delta, 
+    coordf_t                     band_width,
+    LayerHeightEditActionType    action);
+
+extern std::vector<coordf_t> generate_default_layer_density_profile(
+    const SlicingParameters     &slicing_params,
+    std::vector<coordf_t>       &layer_height_profile);
 
 // Produce object layers as pairs of low / high layer boundaries, stored into a linear vector.
 // The object layers are based at z=0, ignoring the raft layers.

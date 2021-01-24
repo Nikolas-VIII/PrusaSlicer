@@ -184,13 +184,15 @@ private:
         SlicingParameters          *m_slicing_parameters;
         std::vector<double>         m_layer_height_profile;
         bool                        m_layer_height_profile_modified;
+        std::vector<double>         m_layer_density_profile;
+        bool                        m_layer_density_profile_modified;
 
         mutable float               m_adaptive_quality;
         mutable HeightProfileSmoothingParams m_smooth_params;
         
         static float                s_overelay_window_width;
 
-        class LayersTexture
+        class LayersTexture//TODO change colors for temp layers
         {
         public:
             LayersTexture() : width(0), height(0), levels(0), cells(0), valid(false) {}
@@ -242,6 +244,9 @@ private:
         void reset_layer_height_profile(GLCanvas3D& canvas);
         void adaptive_layer_height_profile(GLCanvas3D& canvas, float quality_factor);
         void smooth_layer_height_profile(GLCanvas3D& canvas, const HeightProfileSmoothingParams& smoothing_params);
+
+        void adjust_layer_density_profile();
+        void reset_layer_density_profile(GLCanvas3D& canvas);
 
         static float get_cursor_z_relative(const GLCanvas3D& canvas);
         static bool bar_rect_contains(const GLCanvas3D& canvas, float x, float y);
@@ -466,7 +471,6 @@ private:
     WarningTexture m_warning_texture;
     wxTimer m_timer;
     LayersEditing m_layers_editing;
-    LayersEditing m_temp_layers_editing;
     Mouse m_mouse;
     mutable GLGizmosManager m_gizmos;
     mutable GLToolbar m_main_toolbar;
@@ -835,7 +839,7 @@ private:
 
     void _update_volumes_hover_state() const;
 
-    void _perform_layer_editing_action(wxMouseEvent* evt = nullptr);
+    void _perform_layer_editing_action(wxMouseEvent *evt = nullptr);
 
     // Convert the screen space coordinate to an object space coordinate.
     // If the Z screen space coordinate is not provided, a depth buffer value is substituted.

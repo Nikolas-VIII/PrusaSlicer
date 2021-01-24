@@ -144,7 +144,10 @@ bool Print::invalidate_state_by_config_options(const std::vector<t_config_option
         "use_relative_e_distances",
         "use_volumetric_e",
         "variable_layer_height",
-        "wipe"
+        "wipe",
+        "variable_layer_density",//TODO added
+        "foaming_min_temp",
+        "foaming_max_temp"
     };
 
     static std::unordered_set<std::string> steps_ignore;

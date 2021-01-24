@@ -1840,7 +1840,7 @@ void TabFilament::build()
         //}
 
         optgroup = page->new_optgroup(L("Active foaming filament"));
-        optgroup->append_single_option_line("variable_filament_density");
+        optgroup->append_single_option_line("variable_layer_density");
         line = {L("Temperaturee range"), "" };
         //line.label_path = category_path + "";
         line.append_option(optgroup->get_option("foaming_min_temp"));

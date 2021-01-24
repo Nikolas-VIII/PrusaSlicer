@@ -1673,6 +1673,27 @@ bool PrintObject::update_layer_height_profile(const ModelObject &model_object, c
     return updated;
 }
 
+bool PrintObject::update_layer_density_profile(const ModelObject &model_object, const SlicingParameters &slicing_parameters, std::vector<coordf_t> &layer_height_profile, std::vector<coordf_t> &layer_density_profile)//TODO added
+{
+    bool updated = false;
+
+    if (layer_density_profile.empty()) {
+        // use the constructor because the assignement is crashing on ASAN OsX
+        layer_density_profile = std::vector<coordf_t>(model_object.layer_density_profile.get());
+        updated = true;
+    }
+    /*
+    if (! layer_density_profile.empty() && 
+            layer_density_profile.size() != (layer_height_profile.size() - 1) / 2)
+        layer_density_profile.clear();
+*/
+    if (layer_density_profile.empty()) {
+        layer_density_profile = generate_default_layer_density_profile(slicing_parameters, layer_height_profile);
+        updated = true;
+    }
+    return updated;
+}
+
 // 1) Decides Z positions of the layers,
 // 2) Initializes layers and their regions
 // 3) Slices the object meshes

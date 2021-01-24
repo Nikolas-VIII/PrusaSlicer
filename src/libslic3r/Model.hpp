@@ -215,6 +215,44 @@ private:
     friend class ModelObject;
 };
 
+class LayerDensityProfile final : public ObjectWithTimestamp {
+public:
+    void assign(const LayerDensityProfile &rhs) { if (! this->timestamp_matches(rhs)) { this->m_data = rhs.m_data; this->copy_timestamp(rhs); } }
+    void assign(LayerDensityProfile &&rhs) { if (! this->timestamp_matches(rhs)) { this->m_data = std::move(rhs.m_data); this->copy_timestamp(rhs); } }
+
+    std::vector<coordf_t> get() const throw() { return m_data; }
+    bool                  empty() const throw() { return m_data.empty(); }
+    void                  set(const std::vector<coordf_t> &data) { if (m_data != data) { m_data = data; this->touch(); } }
+    void                  set(std::vector<coordf_t> &&data) { if (m_data != data) { m_data = std::move(data); this->touch(); } }
+    void                  clear() { m_data.clear(); this->touch(); }
+
+    template<class Archive> void serialize(Archive &ar)
+    {
+        ar(cereal::base_class<ObjectWithTimestamp>(this), m_data);
+    }
+
+private:
+    // Constructors to be only called by derived classes.
+    // Default constructor to assign a unique ID.
+    explicit LayerDensityProfile() = default;
+    // Constructor with ignored int parameter to assign an invalid ID, to be replaced
+    // by an existing ID copied from elsewhere.
+    explicit LayerDensityProfile(int) : ObjectWithTimestamp(-1) {}
+    // Copy constructor copies the ID.
+    explicit LayerDensityProfile(const LayerDensityProfile &rhs) = default;
+    // Move constructor copies the ID.
+    explicit LayerDensityProfile(LayerDensityProfile &&rhs) = default;
+
+    // called by ModelObject::assign_copy()
+    LayerDensityProfile& operator=(const LayerDensityProfile &rhs) = default;
+    LayerDensityProfile& operator=(LayerDensityProfile &&rhs) = default;
+
+    std::vector<coordf_t> m_data;
+
+    // to access set_new_unique_id() when copy / pasting an object
+    friend class ModelObject;
+};
+
 // A printable object, possibly having multiple print volumes (each with its own set of parameters and materials),
 // and possibly having multiple modifier volumes, each modifier volume with its set of parameters and materials.
 // Each ModelObject may be instantiated mutliple times, each instance having different placement on the print bed,
@@ -237,6 +275,7 @@ public:
     // Profile of increasing z to a layer height, to be linearly interpolated when calculating the layers.
     // The pairs of <z, layer_height> are packed into a 1D array.
     LayerHeightProfile      layer_height_profile;
+    LayerDensityProfile     layer_density_profile;
     // Whether or not this object is printable
     bool                    printable;
 

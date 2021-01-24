@@ -133,11 +133,13 @@ void Size::set_scale_factor(int scale_factor)
 
 GLCanvas3D::LayersEditing::LayersEditing()
     : m_enabled(false)
+    , m_temperature_mode(false)//TODO added - dunno if needed yet
     , m_z_texture_id(0)
     , m_model_object(nullptr)
     , m_object_max_z(0.f)
     , m_slicing_parameters(nullptr)
     , m_layer_height_profile_modified(false)
+    , m_layer_density_profile_modified(false)//TODO added
     , m_adaptive_quality(0.5f)
     , state(Unknown)
     , band_width(2.0f)
@@ -160,7 +162,7 @@ GLCanvas3D::LayersEditing::~LayersEditing()
 
 const float GLCanvas3D::LayersEditing::THICKNESS_BAR_WIDTH = 70.0f;
 
-void GLCanvas3D::LayersEditing::init()
+void GLCanvas3D::LayersEditing::init()//TODO look here what textures and stuff are used
 {
     glsafe(::glGenTextures(1, (GLuint*)&m_z_texture_id));
     glsafe(::glBindTexture(GL_TEXTURE_2D, m_z_texture_id));
@@ -191,6 +193,8 @@ void GLCanvas3D::LayersEditing::select_object(const Model &model, int object_id)
         (model_object_new != nullptr && m_model_object->id() != model_object_new->id())) {
         m_layer_height_profile.clear();
         m_layer_height_profile_modified = false;
+        m_layer_density_profile.clear();//TODO added
+        m_layer_density_profile_modified = false;
         delete m_slicing_parameters;
         m_slicing_parameters   = nullptr;
         m_layers_texture.valid = false;
@@ -227,6 +231,7 @@ bool GLCanvas3D::LayersEditing::is_temp_mode() const//TODO added
 
 void  GLCanvas3D::LayersEditing::set_temp_mode(bool enabled)
 {
+    m_enabled = is_temp_allowed() && enabled;//TODO propably right
     m_temperature_mode = is_temp_allowed() && enabled;
 }
 
@@ -313,7 +318,9 @@ void GLCanvas3D::LayersEditing::render_overlay(const GLCanvas3D& canvas) const
         imgui.text_colored(ImGuiWrapper::COL_ORANGE_LIGHT, _L("Mouse wheel:"));
         ImGui::SameLine();
         imgui.text(_L("Increase/decrease edit area"));
-    
+
+        text_align = ImGui::GetCursorPosX();
+        widget_align = ImGui::GetCursorPosX();
     }
 
     ImGui::Separator();
@@ -393,7 +400,7 @@ Rect GLCanvas3D::LayersEditing::get_bar_rect_viewport(const GLCanvas3D& canvas)
     return Rect((half_w - thickness_bar_width(canvas)) * inv_zoom, half_h * inv_zoom, half_w * inv_zoom, -half_h * inv_zoom);
 }
 
-bool GLCanvas3D::LayersEditing::is_initialized() const
+bool GLCanvas3D::LayersEditing::is_initialized() const//TODO look into
 {
     return wxGetApp().get_shader("variable_layer_height") != nullptr;
 }
@@ -427,7 +434,7 @@ std::string GLCanvas3D::LayersEditing::get_tooltip(const GLCanvas3D& canvas) con
     return ret;
 }
 
-void GLCanvas3D::LayersEditing::render_active_object_annotations(const GLCanvas3D& canvas, const Rect& bar_rect) const
+void GLCanvas3D::LayersEditing::render_active_object_annotations(const GLCanvas3D& canvas, const Rect& bar_rect) const//TODO look where this is called
 {
     GLShaderProgram* shader = wxGetApp().get_shader("variable_layer_height");
     if (shader == nullptr)
@@ -482,18 +489,26 @@ void GLCanvas3D::LayersEditing::render_profile(const Rect& bar_rect) const
     glsafe(::glEnd());
 
     // Curve
-    glsafe(::glColor3f(0.0f, 0.0f, 1.0f));
-    ::glBegin(GL_LINE_STRIP);
-    for (unsigned int i = 0; i < m_layer_height_profile.size(); i += 2)
-        ::glVertex2f(bar_rect.get_left() + (float)m_layer_height_profile[i + 1] * scale_x, bar_rect.get_bottom() + (float)m_layer_height_profile[i] * scale_y);
-    glsafe(::glEnd());
+    if (m_temperature_mode) { // TODO added - might change color, I hope
+        glsafe(::glColor3f(0.0f, 1.0f, 0.0f));
+        ::glBegin(GL_LINE_STRIP);
+        for (unsigned int i = 0; i < m_layer_density_profile.size(); i += 1)
+            ::glVertex2f(bar_rect.get_left() + (float)m_layer_density_profile[i] / 6, bar_rect.get_bottom() + (float)i * 2 * scale_y / 5);
+        glsafe(::glEnd());
+    } else {
+        glsafe(::glColor3f(0.0f, 0.0f, 1.0f));
+        ::glBegin(GL_LINE_STRIP);
+        for (unsigned int i = 0; i < m_layer_height_profile.size(); i += 2)
+             ::glVertex2f(bar_rect.get_left() + (float)m_layer_height_profile[i + 1] * scale_x, bar_rect.get_bottom() + (float)m_layer_height_profile[i] * scale_y);
+        glsafe(::glEnd());
+    }
 }
 
 void GLCanvas3D::LayersEditing::render_volumes(const GLCanvas3D& canvas, const GLVolumeCollection &volumes) const
 {
     assert(this->is_allowed());
     assert(this->last_object_id != -1);
-    GLShaderProgram* shader = wxGetApp().get_shader("variable_layer_height");//TODO look into this
+    GLShaderProgram* shader = wxGetApp().get_shader("variable_layer_density");//TODO look into this
     if (shader == nullptr)
         return;
 
@@ -505,7 +520,7 @@ void GLCanvas3D::LayersEditing::render_volumes(const GLCanvas3D& canvas, const G
         // The layer editing shader was already active.
         current_shader = nullptr;
 
-    const_cast<LayersEditing*>(this)->generate_layer_height_texture();
+    const_cast<LayersEditing*>(this)->generate_layer_height_texture();//TODO look into this
 
     // Uniforms were resolved, go ahead using the layer editing shader.
     shader->set_uniform("z_to_texture_row", float(m_layers_texture.cells - 1) / (float(m_layers_texture.width) * float(m_object_max_z)));
@@ -538,7 +553,7 @@ void GLCanvas3D::LayersEditing::render_volumes(const GLCanvas3D& canvas, const G
     if (current_shader != nullptr)
         current_shader->start_using();
 }
-
+//TODO add adjust_layer_density_profile etc.
 void GLCanvas3D::LayersEditing::adjust_layer_height_profile()
 {
 	this->update_slicing_parameters();
@@ -565,7 +580,7 @@ void GLCanvas3D::LayersEditing::adaptive_layer_height_profile(GLCanvas3D& canvas
     canvas.post_event(SimpleEvent(EVT_GLCANVAS_SCHEDULE_BACKGROUND_PROCESS));
 }
 
-void GLCanvas3D::LayersEditing::smooth_layer_height_profile(GLCanvas3D& canvas, const HeightProfileSmoothingParams& smoothing_params)
+void GLCanvas3D::LayersEditing::smooth_layer_height_profile(GLCanvas3D& canvas, const HeightProfileSmoothingParams& smoothing_params)//TODO maybe change for temp
 {
     this->update_slicing_parameters();
     m_layer_height_profile = smooth_height_profile(m_layer_height_profile, *m_slicing_parameters, smoothing_params);
@@ -574,7 +589,25 @@ void GLCanvas3D::LayersEditing::smooth_layer_height_profile(GLCanvas3D& canvas, 
     canvas.post_event(SimpleEvent(EVT_GLCANVAS_SCHEDULE_BACKGROUND_PROCESS));
 }
 
-void GLCanvas3D::LayersEditing::generate_layer_height_texture()
+void GLCanvas3D::LayersEditing::adjust_layer_density_profile()//TODO added
+{
+	this->update_slicing_parameters();
+	PrintObject::update_layer_height_profile(*m_model_object, *m_slicing_parameters, m_layer_height_profile);
+    PrintObject::update_layer_density_profile(*m_model_object, *m_slicing_parameters, m_layer_height_profile, m_layer_density_profile);
+	Slic3r::adjust_layer_density_profile(*m_slicing_parameters, m_layer_height_profile, m_layer_density_profile, this->last_z, this->strength, this->band_width, this->last_action);
+	m_layer_height_profile_modified = true;
+    m_layers_texture.valid = false;
+}
+
+void GLCanvas3D::LayersEditing::reset_layer_density_profile(GLCanvas3D& canvas)
+{
+	const_cast<ModelObject*>(m_model_object)->layer_density_profile.clear();
+    m_layer_density_profile.clear();
+    m_layers_texture.valid = false;
+    canvas.post_event(SimpleEvent(EVT_GLCANVAS_SCHEDULE_BACKGROUND_PROCESS));
+}
+
+void GLCanvas3D::LayersEditing::generate_layer_height_texture()//TODO add texture for density
 {
 	this->update_slicing_parameters();
 	// Always try to update the layer height profile.
@@ -610,6 +643,10 @@ void GLCanvas3D::LayersEditing::accept_changes(GLCanvas3D& canvas)
         if (m_layer_height_profile_modified) {
             wxGetApp().plater()->take_snapshot(_(L("Variable layer height - Manual edit")));
             const_cast<ModelObject*>(m_model_object)->layer_height_profile.set(m_layer_height_profile);
+			canvas.post_event(SimpleEvent(EVT_GLCANVAS_SCHEDULE_BACKGROUND_PROCESS));
+        } else if (m_layer_density_profile_modified) {
+            wxGetApp().plater()->take_snapshot(_(L("Variable layer density - Manual edit")));
+            const_cast<ModelObject*>(m_model_object)->layer_density_profile.set(m_layer_density_profile);
 			canvas.post_event(SimpleEvent(EVT_GLCANVAS_SCHEDULE_BACKGROUND_PROCESS));
         }
     }
@@ -1626,7 +1663,6 @@ bool GLCanvas3D::init()
 
     if (m_main_toolbar.is_enabled()) {
         m_layers_editing.init();
-        m_temp_layers_editing.init();//TODO added
     }
 
     // on linux the gl context is not valid until the canvas is not shown on screen
@@ -1824,12 +1860,12 @@ bool GLCanvas3D::is_layers_editing_allowed() const
 
 bool GLCanvas3D::is_layers_temp_editing_enabled() const
 {
-    return m_temp_layers_editing.is_enabled();
+    return m_layers_editing.is_enabled();
 }
 
 bool GLCanvas3D::is_layers_temp_editing_allowed() const
 {
-    return m_temp_layers_editing.is_allowed();
+    return m_layers_editing.is_allowed();
 }
 
 void GLCanvas3D::reset_layer_height_profile()
@@ -1877,8 +1913,7 @@ void GLCanvas3D::enable_layers_editing(bool enable)
 
 void GLCanvas3D::enable_layers_temp_editing(bool enable)//TODO added
 {
-    m_temp_layers_editing.set_enabled(enable);
-    m_temp_layers_editing.set_temp_mode(enable);//TODO not sure if neccessary
+    m_layers_editing.set_temp_mode(enable);//TODO not sure if neccessary
     const Selection::IndicesList &idxs = m_selection.get_volume_idxs();
     for (unsigned int idx : idxs)
     {
@@ -3645,6 +3680,7 @@ void GLCanvas3D::on_mouse(wxMouseEvent& evt)
 
     int selected_object_idx = m_selection.get_object_idx();
     int layer_editing_object_idx = is_layers_editing_enabled() ? selected_object_idx : -1;
+    int layer_temp_editing_object_idx = is_layers_temp_editing_enabled() ? selected_object_idx : -1;//TODO added
     m_layers_editing.select_object(*m_model, layer_editing_object_idx);
 
     if (m_mouse.drag.move_requires_threshold && m_mouse.is_move_start_threshold_position_2D_defined() && m_mouse.is_move_threshold_met(pos)) {
@@ -3695,7 +3731,7 @@ void GLCanvas3D::on_mouse(wxMouseEvent& evt)
         // If user pressed left or right button we first check whether this happened
         // on a volume or not.
         m_layers_editing.state = LayersEditing::Unknown;
-        if (layer_editing_object_idx != -1 && m_layers_editing.bar_rect_contains(*this, pos(0), pos(1))) {
+        if ((layer_editing_object_idx != -1 || layer_temp_editing_object_idx != -1) && m_layers_editing.bar_rect_contains(*this, pos(0), pos(1))) {//TODO added
             // A volume is selected and the mouse is inside the layer thickness bar.
             // Start editing the layer height.
             m_layers_editing.state = LayersEditing::Editing;
@@ -3815,7 +3851,7 @@ void GLCanvas3D::on_mouse(wxMouseEvent& evt)
     else if (evt.Dragging()) {
         m_mouse.dragging = true;
 
-        if (m_layers_editing.state != LayersEditing::Unknown && layer_editing_object_idx != -1) {
+        if (m_layers_editing.state != LayersEditing::Unknown && (layer_editing_object_idx != -1 || layer_temp_editing_object_idx != -1)) {
             if (m_layers_editing.state == LayersEditing::Editing) {
                 _perform_layer_editing_action(&evt);
                 m_mouse.position = pos.cast<double>();
@@ -4488,7 +4524,7 @@ bool GLCanvas3D::_render_search_list(float pos_x) const
         sidebar.search();
 
     if (selected >= 0) {
-        // selected == 9999 means that Esc kye was pressed
+        // selected == 9999 means that Esc key was pressed
         /*// revert commit https://github.com/prusa3d/PrusaSlicer/commit/91897589928789b261ca0dc735ffd46f2b0b99f2
         if (selected == 9999)
             action_taken = true;
@@ -5064,7 +5100,7 @@ bool GLCanvas3D::_init_main_toolbar()
 
         return res;
     };
-    item.enabling_callback      = []() -> bool { return wxGetApp().plater()->can_layers_temp_editing(); };//TODO added
+    item.enabling_callback      = []() -> bool { return wxGetApp().plater()->can_layers_temp_editing(); };
     item.left.render_callback   = GLToolbarItem::Default_Render_Callback;
     if (!m_main_toolbar.add_item(item))
         return false;
@@ -5502,7 +5538,7 @@ void GLCanvas3D::_render_objects() const
 
     if (m_picking_enabled) {
         // Update the layer editing selection to the first object selected, update the current object maximum Z.
-        const_cast<LayersEditing&>(m_layers_editing).select_object(*m_model, this->is_layers_editing_enabled() ? m_selection.get_object_idx() : -1);
+        const_cast<LayersEditing&>(m_layers_editing).select_object(*m_model, this->is_layers_editing_enabled() ? m_selection.get_object_idx() : this->is_layers_temp_editing_enabled() ? m_selection.get_object_idx() : -1);//TODO not 100% if this works
 
         if (m_config != nullptr) {
             const BoundingBoxf3& bed_bb = wxGetApp().plater()->get_bed().get_bounding_box(false);
@@ -5786,7 +5822,7 @@ void GLCanvas3D::_render_undoredo_toolbar() const
     m_undoredo_toolbar.render(*this);
 }
 
-void GLCanvas3D::_render_collapse_toolbar() const
+void GLCanvas3D::_render_collapse_toolbar() const//TODO look into maybe
 {
     GLToolbar& collapse_toolbar = wxGetApp().plater()->get_collapse_toolbar();
 
@@ -6088,10 +6124,13 @@ void GLCanvas3D::_perform_layer_editing_action(wxMouseEvent* evt)
         m_layers_editing.last_z = m_layers_editing.object_max_z() * (b - evt->GetY() - 1.0f) / (b - rect.get_top());
         m_layers_editing.last_action = 
             evt->ShiftDown() ? (evt->RightIsDown() ? LAYER_HEIGHT_EDIT_ACTION_SMOOTH : LAYER_HEIGHT_EDIT_ACTION_REDUCE) : 
-                               (evt->RightIsDown() ? LAYER_HEIGHT_EDIT_ACTION_INCREASE : LAYER_HEIGHT_EDIT_ACTION_DECREASE);
+                                (evt->RightIsDown() ? LAYER_HEIGHT_EDIT_ACTION_INCREASE : LAYER_HEIGHT_EDIT_ACTION_DECREASE);
     }
 
-    m_layers_editing.adjust_layer_height_profile();
+    if (m_layers_editing.is_temp_mode())
+        m_layers_editing.adjust_layer_density_profile();
+    else
+        m_layers_editing.adjust_layer_height_profile();
     _refresh_if_shown_on_screen();
 
     // Automatic action on mouse down with the same coordinate.

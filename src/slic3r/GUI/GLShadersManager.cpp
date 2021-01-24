@@ -43,6 +43,7 @@ std::pair<bool, std::string> GLShadersManager::init()
     valid &= append_shader("gouraud", { "gouraud.vs", "gouraud.fs" });
     // used to render variable layers heights in 3d editor
     valid &= append_shader("variable_layer_height", { "variable_layer_height.vs", "variable_layer_height.fs" });
+    valid &= append_shader("variable_layer_density", { "variable_layer_density.vs", "variable_layer_density.fs" });
 
     return { valid, error };
 }

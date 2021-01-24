@@ -1718,6 +1718,7 @@ struct Plater::priv
     void on_process_completed(SlicingProcessCompletedEvent&);
 	void on_export_began(wxCommandEvent&);
     void on_layer_editing_toggled(bool enable);
+    void on_layer_temp_editing_toggled(bool enable);//TODO added
 	void on_slicing_began();
 
 	void clear_warnings();
@@ -1733,6 +1734,7 @@ struct Plater::priv
     void on_action_split_objects(SimpleEvent&);
     void on_action_split_volumes(SimpleEvent&);
     void on_action_layersediting(SimpleEvent&);
+    void on_action_temp_layersediting(SimpleEvent &);//TODO added
 
     void on_object_select(SimpleEvent&);
     void on_right_click(RBtnEvent&);
@@ -1836,7 +1838,8 @@ Plater::priv::priv(Plater *q, MainFrame *main_frame)
         // These values are necessary to construct SlicingParameters by the Canvas3D variable layer height editor.
         "layer_height", "first_layer_height", "min_layer_height", "max_layer_height",
         "brim_width", "perimeters", "perimeter_extruder", "fill_density", "infill_extruder", "top_solid_layers", 
-        "support_material", "support_material_extruder", "support_material_interface_extruder", "support_material_contact_distance", "raft_layers"
+        "support_material", "support_material_extruder", "support_material_interface_extruder", "support_material_contact_distance", "raft_layers",
+        "variable_layer_density", "foaming_min_temp", "foaming_max_temp"//TODO added
         }))
     , sidebar(new Sidebar(q))
     , m_ui_jobs(this)
@@ -1970,7 +1973,7 @@ Plater::priv::priv(Plater *q, MainFrame *main_frame)
         view3D_canvas->Bind(EVT_GLTOOLBAR_SPLIT_OBJECTS, &priv::on_action_split_objects, this);
         view3D_canvas->Bind(EVT_GLTOOLBAR_SPLIT_VOLUMES, &priv::on_action_split_volumes, this);
         view3D_canvas->Bind(EVT_GLTOOLBAR_LAYERSEDITING, &priv::on_action_layersediting, this);
-        view3D_canvas->Bind(EVT_GLTOOLBAR_LAYERSTEMPEDITING, &priv::on_action_layersediting, this);//TODO work on this
+        view3D_canvas->Bind(EVT_GLTOOLBAR_LAYERSTEMPEDITING, &priv::on_action_temp_layersediting, this);//TODO added
 #if ENABLE_GCODE_VIEWER
     }
 #endif // ENABLE_GCODE_VIEWER
@@ -2644,6 +2647,12 @@ void Plater::priv::selection_changed()
         on_action_layersediting(evt);
     }
 
+    enable_layer_editing = layers_density_allowed();//TODO added - check if this is sufficient
+    if (!enable_layer_editing && view3D->is_layers_temp_editing_enabled()) {
+        SimpleEvent evt(EVT_GLTOOLBAR_LAYERSTEMPEDITING);
+        on_action_temp_layersediting(evt);
+    }
+
     // forces a frame render to update the view (to avoid a missed update if, for example, the context menu appears)
     view3D->render();
 }
@@ -2677,6 +2686,9 @@ void Plater::priv::remove(size_t obj_idx)
 
     if (view3D->is_layers_editing_enabled())
         view3D->enable_layers_editing(false);
+
+    if (view3D->is_layers_temp_editing_enabled())//TODO added
+        view3D->enable_layers_temp_editing(false);
 
     model.delete_object(obj_idx);
     update();
@@ -2712,6 +2724,9 @@ void Plater::priv::reset()
 
     if (view3D->is_layers_editing_enabled())
         view3D->enable_layers_editing(false);
+
+    if (view3D->is_layers_temp_editing_enabled())//TODO added
+        view3D->enable_layers_temp_editing(false);
 
 #if ENABLE_GCODE_VIEWER
     reset_gcode_toolpaths();
@@ -3660,6 +3675,12 @@ void Plater::priv::on_layer_editing_toggled(bool enable)
     view3D->set_as_dirty();
 }
 
+void Plater::priv::on_layer_temp_editing_toggled(bool enable)//TODO added
+{
+    view3D->enable_layers_temp_editing(enable);
+    view3D->set_as_dirty();
+}
+
 void Plater::priv::on_action_add(SimpleEvent&)
 {
     if (q != nullptr)
@@ -3680,6 +3701,12 @@ void Plater::priv::on_action_layersediting(SimpleEvent&)
 {
     view3D->enable_layers_editing(!view3D->is_layers_editing_enabled());
     notification_manager->set_move_from_overlay(view3D->is_layers_editing_enabled());
+}
+
+void Plater::priv::on_action_temp_layersediting(SimpleEvent &)//TODO added
+{
+    view3D->enable_layers_temp_editing(!view3D->is_layers_temp_editing_enabled());
+    notification_manager->set_move_from_overlay(view3D->is_layers_temp_editing_enabled());
 }
 
 void Plater::priv::on_object_select(SimpleEvent& evt)
@@ -4183,7 +4210,7 @@ bool Plater::priv::layers_density_allowed() const//TODO added
         return false;
 
     int obj_idx = get_selected_object_idx();
-    return (0 <= obj_idx) && (obj_idx < (int)model.objects.size()) && config->opt_bool("variable_filament_density") && view3D->is_layers_temp_editing_allowed();
+    return (0 <= obj_idx) && (obj_idx < (int)model.objects.size()) && config->opt_bool("variable_layer_density") && view3D->is_layers_temp_editing_allowed();
 }
 
 bool Plater::priv::can_mirror() const
@@ -5551,6 +5578,12 @@ void Plater::on_config_change(const DynamicPrintConfig &config)
         else if(opt_key == "variable_layer_height") {
             if (p->config->opt_bool("variable_layer_height") != true) {
                 p->view3D->enable_layers_editing(false);
+                p->view3D->set_as_dirty();
+            }
+        }
+        else if(opt_key == "variable_layer_density") {//TODO added
+            if (p->config->opt_bool("variable_layer_density") != true) {
+                p->view3D->enable_layers_temp_editing(false);
                 p->view3D->set_as_dirty();
             }
         }

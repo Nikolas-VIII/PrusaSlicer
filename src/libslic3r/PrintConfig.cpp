@@ -2425,6 +2425,30 @@ void PrintConfigDef::init_fff_params()
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionFloat(0));
 
+    def = this->add("variable_layer_density", coBool);//TODO did work here
+    def->label = L("Active foaming material");
+    def->tooltip = L("Active foaming materials change properties with printing temperature.");
+    def->mode = comExpert;
+    def->set_default_value(new ConfigOptionBool{false});
+
+    def = this->add("foaming_min_temp", coInt);
+    def->label = L("Min");
+    def->tooltip = L("The lowest selectable printing temperature");
+    def->sidetext = L("°C");
+    def->min = 0;
+    def->max = max_temp;
+    def->mode = comExpert;
+    def->set_default_value(new ConfigOptionInt { 195 });
+
+    def = this->add("foaming_max_temp", coInt);
+    def->label = L("Max");
+    def->tooltip = L("The highest selectable printing temperature");
+    def->sidetext = L("°C");
+    def->min = 0;
+    def->max = max_temp;
+    def->mode = comExpert;
+    def->set_default_value(new ConfigOptionInt { 260 });
+
     // Declare retract values for filament profile, overriding the printer's extruder profile.
     for (const char *opt_key : {
         // floats
@@ -2448,30 +2472,6 @@ void PrintConfigDef::init_fff_params()
         default: assert(false);
         }
     }
-
-    def = this->add("variable_filament_density", coBools);//TODO did work here
-    def->label = L("Active foaming material");
-    def->tooltip = L("Active foaming materials change properties with printing temperature.");
-    def->mode = comExpert;
-    def->set_default_value(new ConfigOptionBools{false});
-
-    def = this->add("foaming_min_temp", coInts);
-    def->label = L("Min");
-    def->tooltip = L("The lowest selectable printing temperature");
-    def->sidetext = L("°C");
-    def->min = 0;
-    def->max = max_temp;
-    def->mode = comExpert;
-    def->set_default_value(new ConfigOptionInts { 195 });
-
-    def = this->add("foaming_max_temp", coInts);
-    def->label = L("Max");
-    def->tooltip = L("The highest selectable printing temperature");
-    def->sidetext = L("°C");
-    def->min = 0;
-    def->max = max_temp;
-    def->mode = comExpert;
-    def->set_default_value(new ConfigOptionInts { 260 });
 }
 
 void PrintConfigDef::init_extruder_option_keys()

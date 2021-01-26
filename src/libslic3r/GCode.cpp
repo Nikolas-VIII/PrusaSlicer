@@ -214,8 +214,7 @@ namespace Slic3r {
             std::string();
     }
 
-    int
-        OozePrevention::_get_temp(GCode& gcodegen)
+    int OozePrevention::_get_temp(GCode& gcodegen)
     {
         return (gcodegen.layer() != NULL && gcodegen.layer()->id() == 0)
             ? gcodegen.config().first_layer_temperature.get_at(gcodegen.writer().extruder()->id())

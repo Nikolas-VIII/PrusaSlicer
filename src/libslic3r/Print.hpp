@@ -168,7 +168,7 @@ public:
     Layer*			get_layer_at_printz(coordf_t print_z, coordf_t epsilon);
 
     // print_z: top of the layer; slice_z: center of the layer.
-    Layer* add_layer(int id, coordf_t height, coordf_t print_z, coordf_t slice_z);
+    Layer* add_layer(int id, coordf_t height, coordf_t print_z, coordf_t slice_z, coordf_t density);//TODO added
 
     size_t support_layer_count() const { return m_support_layers.size(); }
     void clear_support_layers();
@@ -233,7 +233,7 @@ private:
     void ironing();
     void generate_support_material();
 
-    void _slice(const std::vector<coordf_t> &layer_height_profile);
+    void _slice(const std::vector<coordf_t> &layer_height_profile, const std::vector<coordf_t> &layer_density_profile);//TODO added
     std::string _fix_slicing_errors();
     void simplify_slices(double distance);
     bool has_support_material() const;

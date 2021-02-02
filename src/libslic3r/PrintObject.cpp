@@ -113,9 +113,11 @@ void PrintObject::slice()
         return;
     m_print->set_status(10, L("Processing triangulated mesh"));
     std::vector<coordf_t> layer_height_profile;
+    std::vector<coordf_t> layer_density_profile;
     this->update_layer_height_profile(*this->model_object(), m_slicing_params, layer_height_profile);
+    this->update_layer_density_profile(*this->model_object(), m_slicing_params, layer_height_profile, layer_density_profile);
     m_print->throw_if_canceled();
-    this->_slice(layer_height_profile);
+    this->_slice(layer_height_profile, layer_density_profile);
     m_print->throw_if_canceled();
     // Fix the model.
     //FIXME is this the right place to do? It is done repeateadly at the UI and now here at the backend.
@@ -483,9 +485,9 @@ void PrintObject::clear_layers()
     m_layers.clear();
 }
 
-Layer* PrintObject::add_layer(int id, coordf_t height, coordf_t print_z, coordf_t slice_z)
+Layer* PrintObject::add_layer(int id, coordf_t height, coordf_t print_z, coordf_t slice_z, coordf_t density)//TODO added
 {
-    m_layers.emplace_back(new Layer(id, this, height, print_z, slice_z));
+    m_layers.emplace_back(new Layer(id, this, height, print_z, slice_z, density));
     return m_layers.back();
 }
 
@@ -1682,11 +1684,12 @@ bool PrintObject::update_layer_density_profile(const ModelObject &model_object, 
         layer_density_profile = std::vector<coordf_t>(model_object.layer_density_profile.get());
         updated = true;
     }
-    /*
     if (! layer_density_profile.empty() && 
-            layer_density_profile.size() != (layer_height_profile.size() - 1) / 2)
+            // Must not be of even length.
+            ((layer_density_profile.size() & 1) != 0 || 
+            // Last entry must be at the top of the object.
+             std::abs(layer_density_profile[layer_density_profile.size() - 2] - slicing_parameters.object_print_z_height()) > 1e-3))
         layer_density_profile.clear();
-*/
     if (layer_density_profile.empty()) {
         layer_density_profile = generate_default_layer_density_profile(slicing_parameters, layer_height_profile);
         updated = true;
@@ -1703,7 +1706,7 @@ bool PrintObject::update_layer_density_profile(const ModelObject &model_object, 
 // Resulting expolygons of layer regions are marked as Internal.
 //
 // this should be idempotent
-void PrintObject::_slice(const std::vector<coordf_t> &layer_height_profile)
+void PrintObject::_slice(const std::vector<coordf_t> &layer_height_profile, const std::vector<coordf_t> &layer_density_profile)
 {
     BOOST_LOG_TRIVIAL(info) << "Slicing objects..." << log_memory_info();
 
@@ -1723,7 +1726,8 @@ void PrintObject::_slice(const std::vector<coordf_t> &layer_height_profile)
             coordf_t lo = object_layers[i_layer];
             coordf_t hi = object_layers[i_layer + 1];
             coordf_t slice_z = 0.5 * (lo + hi);
-            Layer *layer = this->add_layer(id ++, hi - lo, hi + m_slicing_params.object_print_z_min, slice_z);
+            coordf_t density = layer_density_profile[i_layer];// TODO added
+            Layer *layer = this->add_layer(id ++, hi - lo, hi + m_slicing_params.object_print_z_min, slice_z, density);
             slice_zs.push_back(float(slice_z));
             if (prev != nullptr) {
                 prev->upper_layer = layer;

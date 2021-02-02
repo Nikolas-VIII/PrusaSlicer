@@ -25,6 +25,8 @@
 
 #include <memory>
 #include <string>
+#include <vector>
+#include <utility>
 
 #ifdef HAS_PRESSURE_EQUALIZER
 #include "GCode/PressureEqualizer.hpp"

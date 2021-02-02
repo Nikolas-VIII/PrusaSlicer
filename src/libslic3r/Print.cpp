@@ -218,7 +218,7 @@ bool Print::invalidate_state_by_config_options(const std::vector<t_config_option
             || opt_key == "z_offset") {
             steps.emplace_back(psWipeTower);
             steps.emplace_back(psSkirt);
-        } else if (
+        } else if (//TODO add invalidation
                opt_key == "first_layer_extrusion_width" 
             || opt_key == "min_layer_height"
             || opt_key == "max_layer_height") {

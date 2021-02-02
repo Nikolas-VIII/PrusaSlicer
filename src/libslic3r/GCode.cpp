@@ -116,64 +116,64 @@ namespace Slic3r {
     Polygons AvoidCrossingPerimeters::collect_contours_all_layers(const PrintObjectPtrs& objects)
     {
         Polygons islands;
-        for (const PrintObject* object : objects) {
-            // Reducing all the object slices into the Z projection in a logarithimc fashion.
-            // First reduce to half the number of layers.
-            std::vector<Polygons> polygons_per_layer((object->layers().size() + 1) / 2);
-            tbb::parallel_for(tbb::blocked_range<size_t>(0, object->layers().size() / 2),
-                [&object, &polygons_per_layer](const tbb::blocked_range<size_t>& range) {
-                    for (size_t i = range.begin(); i < range.end(); ++i) {
-                        const Layer* layer1 = object->layers()[i * 2];
-                        const Layer* layer2 = object->layers()[i * 2 + 1];
-                        Polygons polys;
-                        polys.reserve(layer1->lslices.size() + layer2->lslices.size());
-                        for (const ExPolygon& expoly : layer1->lslices)
-                            //FIXME no holes?
-                            polys.emplace_back(expoly.contour);
-                        for (const ExPolygon& expoly : layer2->lslices)
-                            //FIXME no holes?
-                            polys.emplace_back(expoly.contour);
-                        polygons_per_layer[i] = union_(polys);
-                    }
-                });
-            if (object->layers().size() & 1) {
-                const Layer* layer = object->layers().back();
+for (const PrintObject* object : objects) {
+    // Reducing all the object slices into the Z projection in a logarithimc fashion.
+    // First reduce to half the number of layers.
+    std::vector<Polygons> polygons_per_layer((object->layers().size() + 1) / 2);
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, object->layers().size() / 2),
+        [&object, &polygons_per_layer](const tbb::blocked_range<size_t>& range) {
+            for (size_t i = range.begin(); i < range.end(); ++i) {
+                const Layer* layer1 = object->layers()[i * 2];
+                const Layer* layer2 = object->layers()[i * 2 + 1];
                 Polygons polys;
-                polys.reserve(layer->lslices.size());
-                for (const ExPolygon& expoly : layer->lslices)
+                polys.reserve(layer1->lslices.size() + layer2->lslices.size());
+                for (const ExPolygon& expoly : layer1->lslices)
                     //FIXME no holes?
                     polys.emplace_back(expoly.contour);
-                polygons_per_layer.back() = union_(polys);
+                for (const ExPolygon& expoly : layer2->lslices)
+                    //FIXME no holes?
+                    polys.emplace_back(expoly.contour);
+                polygons_per_layer[i] = union_(polys);
             }
-            // Now reduce down to a single layer.
-            size_t cnt = polygons_per_layer.size();
-            while (cnt > 1) {
-                tbb::parallel_for(tbb::blocked_range<size_t>(0, cnt / 2),
-                    [&polygons_per_layer](const tbb::blocked_range<size_t>& range) {
-                        for (size_t i = range.begin(); i < range.end(); ++i) {
-                            Polygons polys;
-                            polys.reserve(polygons_per_layer[i * 2].size() + polygons_per_layer[i * 2 + 1].size());
-                            polygons_append(polys, polygons_per_layer[i * 2]);
-                            polygons_append(polys, polygons_per_layer[i * 2 + 1]);
-                            polygons_per_layer[i * 2] = union_(polys);
-                        }
-                    });
-                for (size_t i = 1; i < cnt / 2; ++i)
-                    polygons_per_layer[i] = std::move(polygons_per_layer[i * 2]);
-                if (cnt & 1)
-                    polygons_per_layer[cnt / 2] = std::move(polygons_per_layer[cnt - 1]);
-                cnt = (cnt + 1) / 2;
-            }
-            // And collect copies of the objects.
-            for (const PrintInstance& instance : object->instances()) {
-                // All the layers were reduced to the 1st item of polygons_per_layer.
-                size_t i = islands.size();
-                polygons_append(islands, polygons_per_layer.front());
-                for (; i < islands.size(); ++i)
-                    islands[i].translate(instance.shift);
-            }
-        }
-        return islands;
+        });
+    if (object->layers().size() & 1) {
+        const Layer* layer = object->layers().back();
+        Polygons polys;
+        polys.reserve(layer->lslices.size());
+        for (const ExPolygon& expoly : layer->lslices)
+            //FIXME no holes?
+            polys.emplace_back(expoly.contour);
+        polygons_per_layer.back() = union_(polys);
+    }
+    // Now reduce down to a single layer.
+    size_t cnt = polygons_per_layer.size();
+    while (cnt > 1) {
+        tbb::parallel_for(tbb::blocked_range<size_t>(0, cnt / 2),
+            [&polygons_per_layer](const tbb::blocked_range<size_t>& range) {
+                for (size_t i = range.begin(); i < range.end(); ++i) {
+                    Polygons polys;
+                    polys.reserve(polygons_per_layer[i * 2].size() + polygons_per_layer[i * 2 + 1].size());
+                    polygons_append(polys, polygons_per_layer[i * 2]);
+                    polygons_append(polys, polygons_per_layer[i * 2 + 1]);
+                    polygons_per_layer[i * 2] = union_(polys);
+                }
+            });
+        for (size_t i = 1; i < cnt / 2; ++i)
+            polygons_per_layer[i] = std::move(polygons_per_layer[i * 2]);
+        if (cnt & 1)
+            polygons_per_layer[cnt / 2] = std::move(polygons_per_layer[cnt - 1]);
+        cnt = (cnt + 1) / 2;
+    }
+    // And collect copies of the objects.
+    for (const PrintInstance& instance : object->instances()) {
+        // All the layers were reduced to the 1st item of polygons_per_layer.
+        size_t i = islands.size();
+        polygons_append(islands, polygons_per_layer.front());
+        for (; i < islands.size(); ++i)
+            islands[i].translate(instance.shift);
+    }
+}
+return islands;
     }
 
 
@@ -214,11 +214,35 @@ namespace Slic3r {
             std::string();
     }
 
-    int OozePrevention::_get_temp(GCode& gcodegen)
+    int OozePrevention::_get_temp(GCode& gcodegen)//TODO changed
     {
-        return (gcodegen.layer() != NULL && gcodegen.layer()->id() == 0)
-            ? gcodegen.config().first_layer_temperature.get_at(gcodegen.writer().extruder()->id())
-            : gcodegen.config().temperature.get_at(gcodegen.writer().extruder()->id());
+        if (gcodegen.layer() != NULL && gcodegen.layer()->id() == 0) {
+            return gcodegen.config().first_layer_temperature.get_at(gcodegen.writer().extruder()->id());
+        } else {
+            if (!gcodegen.config().variable_filament_density.getBool()) {
+                return gcodegen.config().temperature.get_at(gcodegen.writer().extruder()->id());
+            } else {
+                //assert(gcodegen.layer()->density() <= 100 && gcodegen.layer()->density() >= 30);
+                std::vector<std::pair<int, int>> test = {{205, 100},//TODO temporary
+                                                         {210, 92},
+                                                         {215, 62},
+                                                         {220, 45},
+                                                         {225, 40},
+                                                         {230, 38},
+                                                         {235, 37},
+                                                         {240, 35},
+                                                         {245, 34},
+                                                         {250, 30}};
+                int i = 0;
+                while (test[i].second > gcodegen.layer()->density)
+                    i++;
+                if (test[i].second == gcodegen.layer()->density) {
+                    return test[i].first;
+                } else {
+                    return (int) lerp(test[i].first, test[i-1].first, gcodegen.layer()->density - test[i].second / test[i-1].second - test[i].second);
+                }
+            }
+        }
     }
 
     std::string Wipe::wipe(GCode& gcodegen, bool toolchange)

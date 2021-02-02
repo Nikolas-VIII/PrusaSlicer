@@ -607,20 +607,33 @@ void adjust_layer_density_profile(
 {
     // Constrain the profile variability by the 1st layer height.
     std::pair<coordf_t, coordf_t> z_span_variable = 
-        std::pair<coordf_t, coordf_t>(0., slicing_params.object_print_z_height());//TODO maybe leave first layer temp as is
+        std::pair<coordf_t, coordf_t>(
+            slicing_params.first_object_layer_height_fixed() ? slicing_params.first_object_layer_height : 0.,
+            slicing_params.object_print_z_height());//TODO maybe leave first layer temp as is
     if (z < z_span_variable.first || z > z_span_variable.second)
         return;
 
 	assert(layer_height_profile.size() >= 2);
-    assert(layer_density_profile.size() >= 1);
-    assert(std::abs(layer_height_profile[layer_height_profile.size() - 2] - slicing_params.object_print_z_height()) < EPSILON);
+    assert(layer_density_profile.size() >= 2);
+    assert(std::abs(layer_density_profile[layer_density_profile.size() - 2] - slicing_params.object_print_z_height()) < EPSILON);
     layer_density_delta *= 1000;
 
     // 1) Get the current layer density at z.
-    coordf_t current_layer_height = slicing_params.layer_height;
+    //coordf_t current_layer_height = slicing_params.layer_height;
     coordf_t current_layer_density = 100;//TODO lower end could be made variable
-    if (layer_density_profile.size() * 2 > z)
-        current_layer_density = layer_density_profile[floor (z / 2)];
+    for (size_t i = 0; i < layer_density_profile.size(); i += 2) {
+        if (i + 2 == layer_density_profile.size()) {
+            current_layer_density = layer_density_profile[i + 1];
+            break;
+        } else if (layer_density_profile[i + 2] > z) {
+            coordf_t z1 = layer_density_profile[i];
+            coordf_t t1 = layer_density_profile[i + 1];
+            coordf_t z2 = layer_density_profile[i + 2];
+            coordf_t t2 = layer_density_profile[i + 3];
+            current_layer_density = lerp(t1, t2, (z - z1) / (z2 - z1));
+			break;
+        }
+    }
     //coordf_t temp = slicing_params.printing_temp;
 
     // 2) Is it possible to apply the delta?
@@ -630,13 +643,13 @@ void adjust_layer_density_profile(
             // fallthrough
         case LAYER_HEIGHT_EDIT_ACTION_INCREASE:
             if (layer_density_delta > 0) {
-                if (current_layer_density >= 100)
+                if (current_layer_density >= 100 - EPSILON)
                     return;
                 layer_density_delta = std::min(layer_density_delta, 100 - current_layer_density);
             } else {
-                if (current_layer_density <= 0)//TODO possibly replace with min value like 30%
+                if (current_layer_density <= 30 + EPSILON)//TODO possibly replace with min value like 30%
                     return;
-                layer_density_delta = std::max(layer_density_delta, 0 - current_layer_density/* - current_layer_density*/);
+                layer_density_delta = std::max(layer_density_delta, 30 - current_layer_density);
             }
             break;
         case LAYER_HEIGHT_EDIT_ACTION_REDUCE:
@@ -655,28 +668,28 @@ void adjust_layer_density_profile(
 	coordf_t lo = std::max(z_span_variable.first,  z - 0.5 * band_width); // The z of the lowest layer of the band.
     // Do not limit the upper side of the band, so that the modifications to the top point of the profile will be allowed.
     coordf_t hi = z + 0.5 * band_width; // The z of the highest layer of the band.
-    coordf_t z_step = 0.2;
+    coordf_t z_step = 0.1;
     size_t idx = 0;
-    while (idx < layer_density_profile.size() && idx * 0.2 < lo)
-        idx += 1;
-    idx -= 1;
+    while (idx < layer_density_profile.size() && layer_density_profile[idx] < lo)
+        idx += 2;
+    idx -= 2;
 
     std::vector<double> profile_new;
     profile_new.reserve(layer_density_profile.size());
 	assert(idx >= 0 && idx + 1 < layer_density_profile.size());
-	profile_new.insert(profile_new.end(), layer_density_profile.begin(), layer_density_profile.begin() + idx + 1); //TODO stops after band open ended
+	profile_new.insert(profile_new.end(), layer_density_profile.begin(), layer_density_profile.begin() + idx + 2); //TODO stops after band open ended
     coordf_t zz = lo;
-    size_t i_resampled_start = profile_new.size(); //TODO might need to 2x this
+    size_t i_resampled_start = profile_new.size();
     while (zz < hi) {
-        size_t next = idx + 1;
-        coordf_t z1 = idx * 0.2;
-        coordf_t h1 = layer_density_profile[idx];
-        coordf_t density = h1;
-        /*if (next < layer_height_profile.size()) {
-            coordf_t z2 = layer_height_profile[next];
-            coordf_t h2 = layer_density_profile[next / 2];
-            density = lerp(h1, h2, (zz - z1) / (z2 - z1));
-        }*/
+        size_t next = idx + 2;
+        coordf_t z1 = layer_density_profile[idx];
+        coordf_t t1 = layer_density_profile[idx + 1];
+        coordf_t density = t1;
+        if (next < layer_height_profile.size()) {
+            coordf_t z2 = layer_density_profile[next];
+            coordf_t t2 = layer_density_profile[next + 1];
+            density = lerp(t1, t2, (zz - z1) / (z2 - z1));
+        }
         // Adjust height by layer_thickness_delta.
         coordf_t weight = std::abs(zz - z) < 0.5 * band_width ? (0.5 + 0.5 * cos(2. * M_PI * (zz - z) / band_width)) : 0.;
         switch (action) {
@@ -706,28 +719,37 @@ void adjust_layer_density_profile(
         density = clamp((coordf_t)30, (coordf_t)100, density);
         if (zz == z_span_variable.second) {
             // This is the last point of the profile.
+            if (profile_new[profile_new.size() - 2] + EPSILON > zz) {
+                profile_new.pop_back();
+                profile_new.pop_back();
+            }
+            profile_new.push_back(zz);
             profile_new.push_back(density);
 			idx = layer_density_profile.size();
             break;
         }
-        profile_new.push_back(density);
+        // Avoid entering a too short segment.
+        if (profile_new[profile_new.size() - 2] + EPSILON < zz) {
+            profile_new.push_back(zz);
+            profile_new.push_back(density);
+        }
         // Limit zz to the object height, so the next iteration the last profile point will be set.
 		zz = std::min(zz + z_step, z_span_variable.second);
         idx = next;
-        while (idx < layer_density_profile.size() && idx * 0.2 < zz)
-            idx += 1;
-        idx -= 1;
+        while (idx < layer_density_profile.size() && layer_density_profile[idx] < zz)
+            idx += 2;
+        idx -= 2;
     }
 
-    idx += 1;
+    idx += 2;
     assert(idx > 0);
     size_t i_resampled_end = profile_new.size();
 	if (idx < layer_density_profile.size()) {//TODO not sure if necessary
-        assert(zz >= idx * 0.2 - 1);
-        assert(zz <= idx * 0.2);
+        assert(zz >= layer_density_profile[idx - 2]);
+        assert(zz <= layer_density_profile[idx]);
 		profile_new.insert(profile_new.end(), layer_density_profile.begin() + idx, layer_density_profile.end());
 	}
-	else if (profile_new.size() < layer_density_profile.size() - 2) { 
+	else if (profile_new[profile_new.size() - 2] + 0.5 * EPSILON < z_span_variable.second) { 
 		profile_new.insert(profile_new.end(), layer_density_profile.end() - 1, layer_density_profile.end());
 	}
     layer_density_profile = std::move(profile_new);
@@ -736,20 +758,20 @@ void adjust_layer_density_profile(
         if (i_resampled_start == 0)
             ++ i_resampled_start;
 		if (i_resampled_end == layer_density_profile.size())
-			i_resampled_end -= 1;
+			i_resampled_end -= 2;
         size_t n_rounds = 6;
         for (size_t i_round = 0; i_round < n_rounds; ++ i_round) {
             profile_new = layer_density_profile;
-            for (size_t i = i_resampled_start; i < i_resampled_end; ++ i) {
-                coordf_t zz = layer_height_profile[i * 2];//TODO I think... CHECK THIS
+            for (size_t i = i_resampled_start; i < i_resampled_end; i += 2) {
+                coordf_t zz = profile_new[i];
                 coordf_t t = std::abs(zz - z) < 0.5 * band_width ? (0.25 * 0.25 * cos(2. * M_PI * (zz - z) / band_width)) : 0.;
                 assert(t >= 0. && t <= 0.5000001);
                 if (i == 0)
-                    layer_density_profile[i] = (1. - t) * profile_new[i] + t * profile_new[i + 1];
+                    layer_density_profile[i + 1] = (1. - t) * profile_new[i] + t * profile_new[i + 3];
                 else if (i + 1 == profile_new.size())
-                    layer_density_profile[i] = (1. - t) * profile_new[i] + t * profile_new[i - 1];
+                    layer_density_profile[i + 1] = (1. - t) * profile_new[i] + t * profile_new[i - 1];
                 else
-                    layer_density_profile[i] = (1. - t) * profile_new[i] + 0.5 * t * (profile_new[i - 1] + profile_new[i + 1]);
+                    layer_density_profile[i + 1] = (1. - t) * profile_new[i] + 0.5 * t * (profile_new[i - 1] + profile_new[i + 3]);
             }
         }
     }
@@ -764,9 +786,12 @@ std::vector<coordf_t> generate_default_layer_density_profile(
     std::vector<coordf_t>      &layer_height_profile)//TODO added (temporary)
 {
     std::vector<coordf_t> layer_density_profile;
-    coordf_t size = slicing_params.object_print_z_height() / slicing_params.layer_height;
-    for (coordf_t i = 0; i < size; i++)
-        layer_density_profile.push_back((coordf_t) 100);
+    layer_density_profile.push_back((coordf_t) 0);
+    layer_density_profile.push_back((coordf_t) 100);
+    layer_density_profile.push_back(layer_height_profile[2]);
+    layer_density_profile.push_back((coordf_t) 100);
+    layer_density_profile.push_back(slicing_params.object_print_z_height());
+    layer_density_profile.push_back((coordf_t) 100);
     return layer_density_profile;
 }
 

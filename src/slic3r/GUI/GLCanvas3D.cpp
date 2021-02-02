@@ -492,8 +492,8 @@ void GLCanvas3D::LayersEditing::render_profile(const Rect& bar_rect) const
     if (m_temperature_mode) { // TODO added - might change color, I hope
         glsafe(::glColor3f(0.0f, 1.0f, 0.0f));
         ::glBegin(GL_LINE_STRIP);
-        for (unsigned int i = 0; i < m_layer_density_profile.size(); i += 1)
-            ::glVertex2f(bar_rect.get_left() + (float)m_layer_density_profile[i] / 6, bar_rect.get_bottom() + (float)i * 2 * scale_y / 5);
+        for (unsigned int i = 0; i < m_layer_density_profile.size(); i += 2)
+             ::glVertex2f(bar_rect.get_left() + (float)m_layer_density_profile[i + 1] / 7.2, bar_rect.get_bottom() + (float)m_layer_density_profile[i] * scale_y);
         glsafe(::glEnd());
     } else {
         glsafe(::glColor3f(0.0f, 0.0f, 1.0f));

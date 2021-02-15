@@ -159,7 +159,7 @@ protected:
     Layer(size_t id, PrintObject *object, coordf_t height, coordf_t print_z, coordf_t slice_z, coordf_t density) :
         upper_layer(nullptr), lower_layer(nullptr), slicing_errors(false),
         slice_z(slice_z), print_z(print_z), height(height),
-        m_id(id), m_object(object) {}
+        m_id(id), m_object(object), density(density) {}
     virtual ~Layer();
 
 private:

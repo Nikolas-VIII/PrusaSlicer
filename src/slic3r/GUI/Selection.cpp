@@ -1388,6 +1388,7 @@ void Selection::copy_to_clipboard()
         dst_object->sla_drain_holes      = src_object->sla_drain_holes;
         dst_object->layer_config_ranges  = src_object->layer_config_ranges;     // #ys_FIXME_experiment
         dst_object->layer_height_profile.assign(src_object->layer_height_profile);
+        dst_object->layer_density_profile.assign(src_object->layer_density_profile);
         dst_object->origin_translation   = src_object->origin_translation;
 
         for (int i : object.second)

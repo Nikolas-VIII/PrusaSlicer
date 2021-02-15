@@ -538,6 +538,7 @@ ModelObject& ModelObject::assign_copy(const ModelObject &rhs)
     this->sla_drain_holes             = rhs.sla_drain_holes;
     this->layer_config_ranges         = rhs.layer_config_ranges;    // #ys_FIXME_experiment
     this->layer_height_profile        = rhs.layer_height_profile;
+    this->layer_density_profile       = rhs.layer_density_profile;//TODO added
     this->printable                   = rhs.printable;
     this->origin_translation          = rhs.origin_translation;
     m_bounding_box                    = rhs.m_bounding_box;
@@ -579,6 +580,7 @@ ModelObject& ModelObject::assign_copy(ModelObject &&rhs)
     this->sla_drain_holes             = std::move(rhs.sla_drain_holes);
     this->layer_config_ranges         = std::move(rhs.layer_config_ranges); // #ys_FIXME_experiment
     this->layer_height_profile        = std::move(rhs.layer_height_profile);
+    this->layer_density_profile       = std::move(rhs.layer_density_profile);//TODO added
     this->origin_translation          = std::move(rhs.origin_translation);
     m_bounding_box                    = std::move(rhs.m_bounding_box);
     m_bounding_box_valid              = std::move(rhs.m_bounding_box_valid);
@@ -609,6 +611,7 @@ void ModelObject::assign_new_unique_ids_recursive()
     for (ModelInstance *model_instance : this->instances)
         model_instance->assign_new_unique_ids_recursive();
     this->layer_height_profile.set_new_unique_id();
+    this->layer_density_profile.set_new_unique_id();//TODO added
 }
 
 // Clone this ModelObject including its volumes and instances, keep the IDs of the copies equal to the original.

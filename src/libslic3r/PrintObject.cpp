@@ -1726,7 +1726,9 @@ void PrintObject::_slice(const std::vector<coordf_t> &layer_height_profile, cons
             coordf_t lo = object_layers[i_layer];
             coordf_t hi = object_layers[i_layer + 1];
             coordf_t slice_z = 0.5 * (lo + hi);
-            coordf_t density = layer_density_profile[i_layer];// TODO added
+            size_t i = 0;//TODO added
+            while (layer_density_profile[i + 2] < slice_z) i += 2;//TODO not save make with for so no mistakes can happen
+            coordf_t density = layer_density_profile[i + 1];
             Layer *layer = this->add_layer(id ++, hi - lo, hi + m_slicing_params.object_print_z_min, slice_z, density);
             slice_zs.push_back(float(slice_z));
             if (prev != nullptr) {

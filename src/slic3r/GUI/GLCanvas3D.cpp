@@ -408,7 +408,7 @@ bool GLCanvas3D::LayersEditing::is_initialized() const//TODO look into
 std::string GLCanvas3D::LayersEditing::get_tooltip(const GLCanvas3D& canvas) const
 {
     std::string ret;
-    if (m_enabled && (m_layer_height_profile.size() >= 4))
+    if ((m_enabled && (m_layer_height_profile.size() >= 4)) || (m_temperature_mode && (m_layer_density_profile.size() >= 4)))
     {
         float z = get_cursor_z_relative(canvas);
         if (z != -1000.0f)
@@ -416,15 +416,29 @@ std::string GLCanvas3D::LayersEditing::get_tooltip(const GLCanvas3D& canvas) con
             z *= m_object_max_z;
 
             float h = 0.0f;
-            for (size_t i = m_layer_height_profile.size() - 2; i >= 2; i -= 2)
-            {
-                float zi = m_layer_height_profile[i];
-                float zi_1 = m_layer_height_profile[i - 2];
-                if ((zi_1 <= z) && (z <= zi))
+            if (m_temperature_mode) {//TODO added - maybe make prettier later
+                for (size_t i = m_layer_density_profile.size() - 2; i >= 2; i -= 2)
                 {
-                    float dz = zi - zi_1;
-                    h = (dz != 0.0f) ? lerp(m_layer_height_profile[i - 1], m_layer_height_profile[i + 1], (z - zi_1) / dz) : m_layer_height_profile[i + 1];
-                    break;
+                    float zi = m_layer_density_profile[i];
+                    float zi_1 = m_layer_density_profile[i - 2];
+                    if ((zi_1 <= z) && (z <= zi))
+                    {
+                        float dz = zi - zi_1;
+                        h = (dz != 0.0f) ? lerp(m_layer_density_profile[i - 1], m_layer_density_profile[i + 1], (z - zi_1) / dz) : m_layer_density_profile[i + 1];
+                        break;
+                    }
+                }
+            } else {
+                for (size_t i = m_layer_height_profile.size() - 2; i >= 2; i -= 2)
+                {
+                    float zi = m_layer_height_profile[i];
+                    float zi_1 = m_layer_height_profile[i - 2];
+                    if ((zi_1 <= z) && (z <= zi))
+                    {
+                        float dz = zi - zi_1;
+                        h = (dz != 0.0f) ? lerp(m_layer_height_profile[i - 1], m_layer_height_profile[i + 1], (z - zi_1) / dz) : m_layer_height_profile[i + 1];
+                        break;
+                    }
                 }
             }
             if (h > 0.0f)
@@ -595,7 +609,7 @@ void GLCanvas3D::LayersEditing::adjust_layer_density_profile()//TODO added
 	PrintObject::update_layer_height_profile(*m_model_object, *m_slicing_parameters, m_layer_height_profile);
     PrintObject::update_layer_density_profile(*m_model_object, *m_slicing_parameters, m_layer_height_profile, m_layer_density_profile);
 	Slic3r::adjust_layer_density_profile(*m_slicing_parameters, m_layer_height_profile, m_layer_density_profile, this->last_z, this->strength, this->band_width, this->last_action);
-	m_layer_height_profile_modified = true;
+	m_layer_density_profile_modified = true;
     m_layers_texture.valid = false;
 }
 
@@ -616,6 +630,10 @@ void GLCanvas3D::LayersEditing::generate_layer_height_texture()//TODO add textur
         // Initialized to the default value.
         m_layer_height_profile_modified = false;
         update = true;
+    }
+    if (PrintObject::update_layer_density_profile(*m_model_object, *m_slicing_parameters, m_layer_height_profile, m_layer_density_profile)) {
+        m_layer_density_profile_modified = false;
+        update = true; 
     }
     // Update if the layer height profile was changed, or when the texture is not valid.
     if (! update && ! m_layers_texture.data.empty() && m_layers_texture.cells > 0)
@@ -644,13 +662,14 @@ void GLCanvas3D::LayersEditing::accept_changes(GLCanvas3D& canvas)
             wxGetApp().plater()->take_snapshot(_(L("Variable layer height - Manual edit")));
             const_cast<ModelObject*>(m_model_object)->layer_height_profile.set(m_layer_height_profile);
 			canvas.post_event(SimpleEvent(EVT_GLCANVAS_SCHEDULE_BACKGROUND_PROCESS));
+            m_layer_height_profile_modified = false;
         } else if (m_layer_density_profile_modified) {
             wxGetApp().plater()->take_snapshot(_(L("Variable layer density - Manual edit")));
             const_cast<ModelObject*>(m_model_object)->layer_density_profile.set(m_layer_density_profile);
 			canvas.post_event(SimpleEvent(EVT_GLCANVAS_SCHEDULE_BACKGROUND_PROCESS));
+            m_layer_density_profile_modified = false;
         }
     }
-    m_layer_height_profile_modified = false;
 }
 
 void GLCanvas3D::LayersEditing::update_slicing_parameters()

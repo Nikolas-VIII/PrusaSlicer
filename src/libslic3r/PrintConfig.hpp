@@ -734,7 +734,7 @@ public:
     ConfigOptionString              color_change_gcode;
     ConfigOptionString              pause_print_gcode;
     ConfigOptionString              template_custom_gcode;
-    //ConfigOptionBool                variable_filament_density;//TODO wrong here?
+    //ConfigOptionBool                variable_layer_density;//TODO wrong here?
     //ConfigOptionInt                 foaming_min_temp;
     //ConfigOptionInt                 foaming_max_temp;
 
@@ -890,7 +890,7 @@ public:
     ConfigOptionFloats              wiping_volumes_matrix;
     ConfigOptionFloats              wiping_volumes_extruders;
     ConfigOptionFloat               z_offset;
-    ConfigOptionBool                variable_filament_density; // TODO added
+    ConfigOptionBool                variable_layer_density; // TODO added
     ConfigOptionInt                 foaming_min_temp;
     ConfigOptionInt                 foaming_max_temp;
 
@@ -966,7 +966,7 @@ protected:
         OPT_PTR(wiping_volumes_matrix);
         OPT_PTR(wiping_volumes_extruders);
         OPT_PTR(z_offset);
-        OPT_PTR(variable_filament_density);
+        OPT_PTR(variable_layer_density);
         OPT_PTR(foaming_min_temp);
         OPT_PTR(foaming_max_temp);
     }

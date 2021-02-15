@@ -219,7 +219,7 @@ return islands;
         if (gcodegen.layer() != NULL && gcodegen.layer()->id() == 0) {
             return gcodegen.config().first_layer_temperature.get_at(gcodegen.writer().extruder()->id());
         } else {
-            if (!gcodegen.config().variable_filament_density.getBool()) {
+            if (!gcodegen.config().variable_layer_density.getBool()) {
                 return gcodegen.config().temperature.get_at(gcodegen.writer().extruder()->id());
             } else {
                 //assert(gcodegen.layer()->density() <= 100 && gcodegen.layer()->density() >= 30);
@@ -2158,12 +2158,37 @@ void GCode::process_layer(
                 // In single extruder multi material mode, set the temperature for the current extruder only.
                 continue;
             int temperature = print.config().temperature.get_at(extruder.id());
-            if (temperature > 0 && temperature != print.config().first_layer_temperature.get_at(extruder.id()))
-                gcode += m_writer.set_temperature(temperature, false, extruder.id());
+            if (temperature > 0 && temperature != print.config().first_layer_temperature.get_at(extruder.id())) {
+                if (!print.config().variable_layer_density.getBool())//TODO added
+                    gcode += m_writer.set_temperature(temperature, false, extruder.id());
+            }
         }
         gcode += m_writer.set_bed_temperature(print.config().bed_temperature.get_at(first_extruder_id));
         // Mark the temperature transition from 1st to 2nd layer to be finished.
         m_second_layer_things_done = true;
+    }
+
+    // Changes Temp according to variable density profile
+    if (print.config().variable_layer_density.getBool()) {//TODO added
+        assert(layer.density >= 30);
+        std::vector<std::pair<int, int>> test = {{205, 100},//TODO temporary
+                                                 {210, 92},
+                                                 {215, 62},
+                                                 {220, 45},
+                                                 {225, 40},
+                                                 {230, 38},
+                                                 {235, 37},
+                                                 {240, 35},
+                                                 {245, 34},
+                                                 {250, 30}};
+        int i = 0;
+        while (test[i].second > layer.density)
+            i++;
+        if (test[i].second == layer.density) {
+            gcode += m_writer.set_temperature(test[i].first);
+        } else {
+            gcode += m_writer.set_temperature((int) lerp(test[i].first, test[i-1].first, (layer.density - test[i].second) / (test[i-1].second - test[i].second)));
+        }
     }
 
     // Map from extruder ID to <begin, end> index of skirt loops to be extruded with that extruder.

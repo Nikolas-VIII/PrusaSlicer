@@ -275,7 +275,7 @@ public:
     // Profile of increasing z to a layer height, to be linearly interpolated when calculating the layers.
     // The pairs of <z, layer_height> are packed into a 1D array.
     LayerHeightProfile      layer_height_profile;
-    LayerDensityProfile     layer_density_profile;
+    LayerDensityProfile     layer_density_profile;//TODO added
     // Whether or not this object is printable
     bool                    printable;
 
@@ -403,19 +403,21 @@ private:
         assert(this->id().valid());
         assert(this->config.id().valid());
         assert(this->layer_height_profile.id().valid());
+        assert(this->layer_density_profile.id().valid());//TODO added
     }
-    explicit ModelObject(int) : ObjectBase(-1), config(-1), layer_height_profile(-1), m_model(nullptr), printable(true), origin_translation(Vec3d::Zero()), m_bounding_box_valid(false), m_raw_bounding_box_valid(false), m_raw_mesh_bounding_box_valid(false)
+    explicit ModelObject(int) : ObjectBase(-1), config(-1), layer_height_profile(-1), layer_density_profile(-1), m_model(nullptr), printable(true), origin_translation(Vec3d::Zero()), m_bounding_box_valid(false), m_raw_bounding_box_valid(false), m_raw_mesh_bounding_box_valid(false)
     { 
         assert(this->id().invalid()); 
         assert(this->config.id().invalid());
         assert(this->layer_height_profile.id().invalid());
+        assert(this->layer_density_profile.id().invalid()); // TODO added
     }
 	~ModelObject();
 	void assign_new_unique_ids_recursive() override;
 
     // To be able to return an object from own copy / clone methods. Hopefully the compiler will do the "Copy elision"
     // (Omits copy and move(since C++11) constructors, resulting in zero - copy pass - by - value semantics).
-    ModelObject(const ModelObject &rhs) : ObjectBase(-1), config(-1), layer_height_profile(-1), m_model(rhs.m_model) { 
+    ModelObject(const ModelObject &rhs) : ObjectBase(-1), config(-1), layer_height_profile(-1), m_model(rhs.m_model) { //TODO look into
     	assert(this->id().invalid()); 
         assert(this->config.id().invalid()); 
         assert(this->layer_height_profile.id().invalid());
@@ -477,6 +479,7 @@ private:
         ObjectBase::set_new_unique_id(); 
         this->config.set_new_unique_id();
         this->layer_height_profile.set_new_unique_id();
+        this->layer_density_profile.set_new_unique_id();//TODO added
     }
 
     OBJECTBASE_DERIVED_COPY_MOVE_CLONE(ModelObject)
@@ -502,7 +505,7 @@ private:
 	friend class UndoRedo::StackImpl;
 	// Used for deserialization -> Don't allocate any IDs for the ModelObject or its config.
 	ModelObject() : 
-        ObjectBase(-1), config(-1), layer_height_profile(-1),
+        ObjectBase(-1), config(-1), layer_height_profile(-1), layer_density_profile(-1),//TODO added
         m_model(nullptr), m_bounding_box_valid(false), m_raw_bounding_box_valid(false), m_raw_mesh_bounding_box_valid(false) {
 		assert(this->id().invalid()); 
         assert(this->config.id().invalid());
@@ -512,7 +515,8 @@ private:
 		ar(cereal::base_class<ObjectBase>(this));
 		Internal::StaticSerializationWrapper<ModelConfigObject> config_wrapper(config);
         Internal::StaticSerializationWrapper<LayerHeightProfile> layer_heigth_profile_wrapper(layer_height_profile);
-        ar(name, input_file, instances, volumes, config_wrapper, layer_config_ranges, layer_heigth_profile_wrapper, 
+        Internal::StaticSerializationWrapper<LayerDensityProfile> layer_density_profile_wrapper(layer_density_profile);//TODO added
+        ar(name, input_file, instances, volumes, config_wrapper, layer_config_ranges, layer_heigth_profile_wrapper, layer_density_profile_wrapper,
             sla_support_points, sla_points_status, sla_drain_holes, printable, origin_translation,
             m_bounding_box, m_bounding_box_valid, m_raw_bounding_box, m_raw_bounding_box_valid, m_raw_mesh_bounding_box, m_raw_mesh_bounding_box_valid);
 	}
